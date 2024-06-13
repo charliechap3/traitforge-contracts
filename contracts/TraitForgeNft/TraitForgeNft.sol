@@ -29,6 +29,8 @@ contract TraitForgeNft is
 
   // Variables for managing generations and token IDs
   uint256 public currentGeneration = 1;
+  /// @dev generation limit
+  uint256 public maxGeneration = 10;
 
   // Mappings for token metadata
   mapping(uint256 => uint256) public tokenCreationTimestamps;
@@ -78,6 +80,14 @@ contract TraitForgeNft is
     priceIncrement = _priceIncrement;
   }
 
+  function setMaxGeneration(uint maxGeneration_) external onlyOwner {
+    require(
+      maxGeneration_ >= currentGeneration,
+      "can't below than current generation"
+    );
+    maxGeneration = maxGeneration_;
+  }
+
   function getGeneration() public view returns (uint256) {
     return currentGeneration;
   }
@@ -110,6 +120,10 @@ contract TraitForgeNft is
       msg.sender == address(entityForgingContract),
       'unauthorized caller'
     );
+    uint256 newGeneration = getTokenGeneration(parent1Id) + 1;
+
+    /// Check new generation is not over maxGeneration
+    require(newGeneration <= maxGeneration, "can't be over max generation");
 
     // Calculate the new entity's entropy
     (uint256 forgerEntropy, uint256 mergerEntropy) = getEntropiesForTokens(
@@ -117,7 +131,6 @@ contract TraitForgeNft is
       parent2Id
     );
     uint256 newEntropy = (forgerEntropy + mergerEntropy) / 2;
-    uint256 newGeneration = getTokenGeneration(parent1Id) + 1;
 
     // Mint the new entity
     uint256 newTokenId = _mintNewEntity(newEntropy, newGeneration);
