@@ -1,113 +1,152 @@
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { NukeFund, TraitForgeNft } from '../typechain-types';
+import {
+  DevFund,
+  NukeFund,
+  TraitForgeNft,
+  Airdrop,
+  EntropyGenerator,
+  EntityForging,
+} from '../typechain-types';
+import { fastForward } from '../utils';
 
 describe('NukeFund', function () {
   let owner: HardhatEthersSigner,
     user1: HardhatEthersSigner,
     nukeFund: NukeFund,
-    nft: TraitForgeNft;
-  let nukeFundAddress: string, entropyGeneratorAddress: string;
+    nft: TraitForgeNft,
+    devFund: DevFund,
+    airdrop: Airdrop,
+    entityForging: EntityForging;
 
   beforeEach(async function () {
     [owner, user1] = await ethers.getSigners();
 
-    // Assuming these addresses are already deployed and known
-    nukeFundAddress = '0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E'; // Correctly initialized
-    entropyGeneratorAddress = '0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB'; // Assuming it's used somewhere in your setup
+    const TraitForgeNft = await ethers.getContractFactory('TraitForgeNft');
+    nft = (await TraitForgeNft.deploy()) as TraitForgeNft;
+    await nft.waitForDeployment();
 
-    // Here, nukeFund is fetched from a known address. If it's supposed to be dynamically deployed in the test, you need to deploy it first.
-    nukeFund = await ethers.getContractAt('NukeFund', nukeFundAddress, owner);
+    devFund = await ethers.deployContract('DevFund');
+    await devFund.waitForDeployment();
 
-    // For erc721Contract, we should deploy it dynamically in tests where it's needed, unless it's also supposed to be a fixed address.
-    // Deploying TraitForgeNft dynamically as part of the test setup for the first test
+    await devFund.addDev(owner.address);
+
+    airdrop = await ethers.deployContract('Airdrop');
+    await airdrop.waitForDeployment();
+
+    await nft.setAirdropContract(await airdrop.getAddress());
+    await airdrop.transferOwnership(await nft.getAddress());
+
+    const NukeFund = await ethers.getContractFactory('NukeFund');
+
+    nukeFund = (await NukeFund.deploy(
+      await nft.getAddress(),
+      await airdrop.getAddress(),
+      await devFund.getAddress(),
+      owner.address
+    )) as NukeFund;
+    await nukeFund.waitForDeployment();
+
+    await nft.setNukeFundContract(await nukeFund.getAddress());
+
+    // Deploy EntityForging contract
+    const EntropyGenerator = await ethers.getContractFactory(
+      'EntropyGenerator'
+    );
+    const entropyGenerator = (await EntropyGenerator.deploy(
+      await nft.getAddress()
+    )) as EntropyGenerator;
+
+    await entropyGenerator.writeEntropyBatch1();
+
+    await nft.setEntropyGenerator(await entropyGenerator.getAddress());
+
+    // Deploy EntityForging contract
+    const EntityForging = await ethers.getContractFactory('EntityForging');
+    entityForging = (await EntityForging.deploy(
+      await nft.getAddress()
+    )) as EntityForging;
+    await nft.setEntityForgingContract(await entityForging.getAddress());
+
+    await nft.connect(owner).mintToken({ value: ethers.parseEther('1') });
+    // Set minimumDaysHeld to 0 for testing purpose
+    await nukeFund.setMinimumDaysHeld(0);
   });
 
   it('should allow the owner to update the ERC721 contract address', async function () {
-    // Dynamically deploy a new instance of the TraitForgeNft contract
-    const TraitForgeNft = await ethers.getContractFactory('TraitForgeNft');
-    const initialOwnerAddress = owner.address;
-    nft = await TraitForgeNft.deploy(
-      initialOwnerAddress,
-      nukeFundAddress, // Use the existing nukeFundAddress here if the new ERC721 needs to know about it, or adjust as needed
-      entropyGeneratorAddress
-    );
-    nft.waitForDeployment();
-
-    // Assuming nukeFund is already deployed and you're setting the ERC721 address
-    await expect(nukeFund.connect(owner).setTraitForgeNftContract(nft.address))
+    await expect(
+      nukeFund.connect(owner).setTraitForgeNftContract(await nft.getAddress())
+    )
       .to.emit(nukeFund, 'TraitForgeNftAddressUpdated')
-      .withArgs(nft.address);
+      .withArgs(await nft.getAddress());
 
-    expect(await nukeFund.nftContract()).to.equal(nft.address);
+    expect(await nukeFund.nftContract()).to.equal(await nft.getAddress());
   });
 
   it('should receive funds and distribute dev share', async function () {
     const initialFundBalance = await nukeFund.getFundBalance();
-    const devShare = ethers.utils.parseEther('0.1'); // 10% of the sent amount
-
-    await expect(() =>
-      user1.sendTransaction({ value: ethers.utils.parseEther('1') })
-    ).to.changeEtherBalance(nukeFund, ethers.utils.parseEther('0.9'));
+    const devShare = ethers.parseEther('0.1'); // 10% of the sent amount
+    const initalDevBalance = await ethers.provider.getBalance(
+      await nukeFund.devAddress()
+    );
+    await expect(
+      async () =>
+        await user1.sendTransaction({
+          to: await nukeFund.getAddress(),
+          value: ethers.parseEther('1'),
+        })
+    ).to.changeEtherBalance(nukeFund, ethers.parseEther('0.9'));
 
     const newFundBalance = await nukeFund.getFundBalance();
     expect(newFundBalance).to.equal(
-      initialFundBalance.add(ethers.utils.parseEther('0.9'))
+      initialFundBalance + ethers.parseEther('0.9')
     );
 
-    const devBalance = await ethers.provider.getBalance(nukeFund.devAddress);
-    expect(devBalance).to.equal(devShare);
+    const devBalance = await ethers.provider.getBalance(
+      await nukeFund.devAddress()
+    );
+    expect(devBalance).to.equal(initalDevBalance + devShare);
   });
 
   it('should calculate the age of a token', async function () {
-    const tokenId = 1;
-
-    // Mock token creation timestamp and entropy
-    await nft.mint(owner.address, tokenId);
-    await nft.setTokenCreationTimestamp(
-      tokenId,
-      Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60
-    );
-    await nft.setEntropy(tokenId, 12345);
+    const tokenId = 0;
 
     const age = await nukeFund.calculateAge(tokenId);
-    expect(age).to.be.a('number');
+    expect(age).to.be.eq(0);
   });
-
-  // Add more test cases as needed...
 
   it('should nuke a token', async function () {
     const tokenId = 1;
 
     // Mint a token
-    await nft
-      .connect(owner)
-      .mintToken(owner.address, { value: ethers.utils.parseEther('0.01') });
+    await nft.connect(owner).mintToken({ value: ethers.parseEther('1') });
 
     // Send some funds to the contract
-    await user1.sendTransaction({ value: ethers.utils.parseEther('1') });
+    await user1.sendTransaction({
+      to: await nukeFund.getAddress(),
+      value: ethers.parseEther('1'),
+    });
 
-    // Calculate nuke factor
-    const nukeFactor = await nukeFund.calculateNukeFactor(tokenId);
-
+    const prevNukeFundBal = await nukeFund.getFundBalance();
     // Ensure the token can be nuked
     expect(await nukeFund.canTokenBeNuked(tokenId)).to.be.true;
 
-    // Nuke the token
-    await expect(() =>
-      nukeFund.connect(owner).nuke(tokenId)
-    ).to.changeEtherBalance(
-      user1,
-      ethers.utils.parseEther((nukeFactor * 0.01).toString())
+    const prevUserEthBalance = await ethers.provider.getBalance(
+      await owner.getAddress()
+    );
+    await nft.connect(owner).approve(await nukeFund.getAddress(), tokenId);
+    await nukeFund.connect(owner).nuke(tokenId);
+
+    const curUserEthBalance = await ethers.provider.getBalance(
+      await owner.getAddress()
     );
 
+    const curNukeFundBal = await nukeFund.getFundBalance();
+    expect(curUserEthBalance).to.be.gt(prevUserEthBalance);
     // Check if the token is burned
-    expect(await erc721Contract.ownerOf(tokenId)).to.equal(
-      ethers.constants.AddressZero
-    );
-
-    // Check if the fund balance is updated
-    expect(await nukeFund.getFundBalance()).to.equal(0);
+    // expect(await nft.ownerOf(tokenId)).to.equal(ethers.ZeroAddress);
+    expect(await nft.balanceOf(owner)).to.eq(1);
+    expect(curNukeFundBal).to.be.lt(prevNukeFundBal);
   });
 });

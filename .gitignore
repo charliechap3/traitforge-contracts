@@ -30,3 +30,6 @@ artifacts
 out
 .openzeppelin/dev-*.json
 .openzeppelin/.session
+
+# VSCode configuration
+.vscode

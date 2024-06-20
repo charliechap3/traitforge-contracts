@@ -37,9 +37,10 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
-      forking: {
-        url: env.ETHEREUM_RPC_URL,
-      },
+      // forking: {
+      //   url: env.ETHEREUM_RPC_URL,
+      //   blockNumber: 20127471,
+      // },
     },
     ethereum: {
       chainId: 1,
