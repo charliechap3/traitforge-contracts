@@ -31,13 +31,13 @@ describe('Airdrop', function () {
     await expect(
       airdrop
         .connect(user2)
-        .setUserAmount(user1.address, ethers.parseEther('1'))
+        .addUserAmount(user1.address, ethers.parseEther('1'))
     ).to.revertedWith('Ownable: caller is not the owner');
 
-    await airdrop.setUserAmount(user1.address, ethers.parseEther('1'));
+    await airdrop.addUserAmount(user1.address, ethers.parseEther('1'));
     expect(await airdrop.userInfo(user1.address)).to.eq(ethers.parseEther('1'));
 
-    await airdrop.setUserAmount(user2.address, ethers.parseEther('3'));
+    await airdrop.addUserAmount(user2.address, ethers.parseEther('3'));
     expect(await airdrop.userInfo(user2.address)).to.eq(ethers.parseEther('3'));
   });
 
