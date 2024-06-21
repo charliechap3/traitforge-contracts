@@ -48,6 +48,7 @@ interface ITraitForgeNft is IERC721Enumerable {
   function burn(uint256 tokenId) external;
 
   function forge(
+    address newOwner,
     uint256 parent1Id,
     uint256 parent2Id,
     string memory baseTokenURI

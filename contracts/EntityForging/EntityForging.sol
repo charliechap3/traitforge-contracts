@@ -132,7 +132,12 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
     uint256 forgerShare = forgingFee - devFee;
     address payable forgerOwner = payable(nftContract.ownerOf(forgerTokenId));
 
-    uint256 newTokenId = nftContract.forge(forgerTokenId, mergerTokenId, '');
+    uint256 newTokenId = nftContract.forge(
+      msg.sender,
+      forgerTokenId,
+      mergerTokenId,
+      ''
+    );
     (bool success, ) = nukeFundAddress.call{ value: devFee }('');
     require(success, 'Failed to send to NukeFund');
     (bool success_forge, ) = forgerOwner.call{ value: forgerShare }('');

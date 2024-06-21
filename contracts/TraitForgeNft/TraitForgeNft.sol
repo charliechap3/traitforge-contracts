@@ -112,6 +112,7 @@ contract TraitForgeNft is
   }
 
   function forge(
+    address newOwner,
     uint256 parent1Id,
     uint256 parent2Id,
     string memory
@@ -133,7 +134,7 @@ contract TraitForgeNft is
     uint256 newEntropy = (forgerEntropy + mergerEntropy) / 2;
 
     // Mint the new entity
-    uint256 newTokenId = _mintNewEntity(newEntropy, newGeneration);
+    uint256 newTokenId = _mintNewEntity(newOwner, newEntropy, newGeneration);
 
     emit EntityForged(newTokenId, parent1Id, parent2Id, newEntropy);
 
@@ -245,6 +246,7 @@ contract TraitForgeNft is
   }
 
   function _mintNewEntity(
+    address newOwner,
     uint256 entropy,
     uint256 gen
   ) private returns (uint256) {
@@ -254,12 +256,12 @@ contract TraitForgeNft is
     );
 
     uint256 newTokenId = _tokenIds++;
-    _mint(msg.sender, newTokenId);
+    _mint(newOwner, newTokenId);
 
     tokenEntropy[newTokenId] = entropy;
     tokenGenerations[newTokenId] = gen;
     generationMintCounts[gen]++;
-    initialOwners[newTokenId] = msg.sender;
+    initialOwners[newTokenId] = newOwner;
 
     if (
       generationMintCounts[gen] >= maxTokensPerGen && gen == currentGeneration
@@ -268,10 +270,10 @@ contract TraitForgeNft is
     }
 
     if (!airdropContract.airdropStarted()) {
-      airdropContract.addUserAmount(msg.sender, entropy);
+      airdropContract.addUserAmount(newOwner, entropy);
     }
 
-    emit NewEntityMinted(msg.sender, newTokenId, entropy, gen);
+    emit NewEntityMinted(newOwner, newTokenId, entropy, gen);
     return newTokenId;
   }
 
