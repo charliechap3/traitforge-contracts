@@ -11,7 +11,7 @@ const { ethers } = require('hardhat');
 
 describe('EntityForging', () => {
   let entityForging: EntityForging;
-  let nft;
+  let nft: TraitForgeNft;
   let owner;
   let user1;
   let user2;
@@ -57,7 +57,6 @@ describe('EntityForging', () => {
     // Mint some tokens for testing
     await nft.connect(owner).mintToken({ value: ethers.parseEther('1') });
     await nft.connect(user1).mintToken({ value: ethers.parseEther('1') });
-    // await nft.connect(user2).mintToken({ value: ethers.parseEther('1') });
     await nft.connect(user1).mintToken({ value: ethers.parseEther('1') });
   });
 
@@ -83,7 +82,7 @@ describe('EntityForging', () => {
     });
   });
 
-  describe('breedWithListed', () => {
+  describe('Forge With Listed', () => {
     it('should not allow forging with an unlisted forger token', async () => {
       const forgerTokenId = 2;
       const mergerTokenId = 1;
@@ -103,24 +102,25 @@ describe('EntityForging', () => {
       const forgerTokenId = 0;
       const mergerTokenId = 1;
 
-      const initialBalance = await ethers.provider.getBalance(user1.address);
+      const initialBalance = await ethers.provider.getBalance(owner.address);
       const tx = await entityForging
         .connect(user1)
         .forgeWithListed(forgerTokenId, mergerTokenId, {
           value: FORGING_FEE,
         });
-      const finalBalance = await ethers.provider.getBalance(user1.address);
+      const finalBalance = await ethers.provider.getBalance(owner.address);
 
       // Check event emissions
       expect(tx)
         .to.emit(entityForging, 'FeePaid')
         .withArgs(forgerTokenId, mergerTokenId, FORGING_FEE);
 
-      // Check balances
-      expect(finalBalance).to.be.closeTo(
-        initialBalance - FORGING_FEE,
-        ethers.parseUnits('0.1')
-      );
+      expect(finalBalance - initialBalance).to.be.eq((FORGING_FEE * 9n) / 10n);
+      // Check forger nft delisted
+
+      const listingInfo = await entityForging.listings(forgerTokenId);
+
+      expect(listingInfo.isListed).to.be.eq(false);
     });
   });
 });
