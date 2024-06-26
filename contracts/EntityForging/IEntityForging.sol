@@ -12,12 +12,12 @@ interface IEntityForging {
   event ListedForForging(uint256 tokenId, uint256 fee);
   event EntityForged(
     uint256 indexed newTokenid,
-    uint256 parent1Id,
-    uint256 parent2Id,
-    uint256 newEntropy
+    uint256 indexed parent1Id,
+    uint256 indexed parent2Id,
+    uint256 newEntropy,
+    uint256 forgingFee
   );
   event CancelledListingForForging(uint256 tokenId);
-  event FeePaid(uint256 forgerTokenId, uint256 mergerTokenId, uint256 feePaid);
 
   // allows the owner to set NukeFund address
   function setNukeFundAddress(address payable _nukeFundAddress) external;
