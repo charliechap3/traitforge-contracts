@@ -143,6 +143,9 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
     (bool success_forge, ) = forgerOwner.call{ value: forgerShare }('');
     require(success_forge, 'Failed to send to Forge Owner');
 
+    // Cancel listed forger nft
+    _cancelListingForForging(forgerTokenId);
+
     emit FeePaid(forgerTokenId, mergerTokenId, forgingFee);
 
     return newTokenId;
@@ -150,13 +153,19 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
 
   function cancelListingForForging(
     uint256 tokenId
-  ) public whenNotPaused nonReentrant {
+  ) external whenNotPaused nonReentrant {
     require(
       nftContract.ownerOf(tokenId) == msg.sender,
       'Caller must own the token'
     );
     require(listings[tokenId].isListed, 'Token not listed for forging');
+
+    _cancelListingForForging(tokenId);
+  }
+
+  function _cancelListingForForging(uint256 tokenId) internal {
     delete listings[tokenId];
+
     emit ListedForForging(tokenId, 0); // Emitting with 0 fee to denote cancellation
   }
 
