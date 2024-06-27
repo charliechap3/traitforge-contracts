@@ -146,7 +146,15 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
     // Cancel listed forger nft
     _cancelListingForForging(forgerTokenId);
 
-    emit FeePaid(forgerTokenId, mergerTokenId, forgingFee);
+    uint256 newEntropy = nftContract.getTokenEntropy(newTokenId);
+
+    emit EntityForged(
+      newTokenId,
+      forgerTokenId,
+      mergerTokenId,
+      newEntropy,
+      forgingFee
+    );
 
     return newTokenId;
   }

@@ -136,8 +136,6 @@ contract TraitForgeNft is
     // Mint the new entity
     uint256 newTokenId = _mintNewEntity(newOwner, newEntropy, newGeneration);
 
-    emit EntityForged(newTokenId, parent1Id, parent2Id, newEntropy);
-
     return newTokenId;
   }
 
@@ -240,7 +238,13 @@ contract TraitForgeNft is
       airdropContract.addUserAmount(to, entropyValue);
     }
 
-    emit Minted(msg.sender, newItemId, entropyValue);
+    emit Minted(
+      msg.sender,
+      newItemId,
+      currentGeneration,
+      entropyValue,
+      mintPrice
+    );
 
     _distributeFunds(mintPrice);
   }
@@ -273,7 +277,7 @@ contract TraitForgeNft is
       airdropContract.addUserAmount(newOwner, entropy);
     }
 
-    emit NewEntityMinted(newOwner, newTokenId, entropy, gen);
+    emit NewEntityMinted(newOwner, newTokenId, gen, entropy);
     return newTokenId;
   }
 

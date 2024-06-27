@@ -8,22 +8,18 @@ interface ITraitForgeNft is IERC721Enumerable {
   event Minted(
     address indexed minter,
     uint256 indexed itemId,
-    uint256 entropyValue
+    uint256 indexed generation,
+    uint256 entropyValue,
+    uint256 mintPrice
   );
   event NewEntityMinted(
-    address owner,
-    uint256 tokenId,
-    uint256 entropy,
-    uint256 generation
+    address indexed owner,
+    uint256 indexed tokenId,
+    uint256 indexed generation,
+    uint256 entropy
   );
   event GenerationIncremented(uint256 newGeneration);
   event FundsDistributedToNukeFund(address indexed to, uint256 amount);
-  event EntityForged(
-    uint256 indexed newTokenId,
-    uint256 parent1Id,
-    uint256 parent2Id,
-    uint256 newEntropy
-  );
   event NukeFundContractUpdated(address nukeFundAddress);
 
   function setNukeFundContract(address payable _nukeFundAddress) external;
