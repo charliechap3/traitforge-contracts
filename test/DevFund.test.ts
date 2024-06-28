@@ -48,10 +48,14 @@ describe('DevFund', function () {
   });
 
   it('should split the fund between devs when receiving fund', async () => {
-    await owner.sendTransaction({
-      to: await devFund.getAddress(),
-      value: ethers.parseEther('1'),
-    });
+    await expect(
+      owner.sendTransaction({
+        to: await devFund.getAddress(),
+        value: ethers.parseEther('1'),
+      })
+    )
+      .to.emit(devFund, 'FundReceived')
+      .withArgs(await owner.getAddress(), ethers.parseEther('1'));
 
     expect(await devFund.pendingRewards(user1.address)).to.eq(
       ethers.parseEther('0.5')
