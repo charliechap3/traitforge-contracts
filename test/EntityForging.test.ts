@@ -5,6 +5,7 @@ import {
   EntropyGenerator,
   TraitForgeNft,
 } from '../typechain-types';
+import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
@@ -12,9 +13,9 @@ const { ethers } = require('hardhat');
 describe('EntityForging', () => {
   let entityForging: EntityForging;
   let nft: TraitForgeNft;
-  let owner;
-  let user1;
-  let user2;
+  let owner: HardhatEthersSigner;
+  let user1: HardhatEthersSigner;
+  let user2: HardhatEthersSigner;
 
   const FORGING_FEE = ethers.parseEther('1.0'); // 1 ETH
 
@@ -104,6 +105,8 @@ describe('EntityForging', () => {
 
       const initialBalance = await ethers.provider.getBalance(owner.address);
 
+      const forgerEntropy = await nft.getTokenEntropy(forgerTokenId);
+      const mergerEntrypy = await nft.getTokenEntropy(mergerTokenId);
       await expect(
         entityForging
           .connect(user1)
@@ -112,9 +115,23 @@ describe('EntityForging', () => {
           })
       )
         .to.emit(entityForging, 'EntityForged')
-        .withArgs(3, forgerTokenId, mergerTokenId, 396461, FORGING_FEE)
+        .withArgs(
+          3,
+          forgerTokenId,
+          mergerTokenId,
+          (forgerEntropy + mergerEntrypy) / 2n,
+          FORGING_FEE
+        )
         .to.emit(entityForging, 'ListedForForging')
-        .withArgs(0, 0);
+        .withArgs(0, 0)
+        .to.emit(nft, 'NewEntityMinted')
+        .withArgs(
+          await user1.getAddress(),
+          3,
+          2,
+          (forgerEntropy + mergerEntrypy) / 2n
+        );
+      // NewEntityMinted(newOwner, newTokenId, gen, entropy)
 
       const finalBalance = await ethers.provider.getBalance(owner.address);
 
