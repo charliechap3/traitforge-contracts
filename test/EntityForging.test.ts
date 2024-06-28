@@ -103,17 +103,20 @@ describe('EntityForging', () => {
       const mergerTokenId = 1;
 
       const initialBalance = await ethers.provider.getBalance(owner.address);
-      const tx = await entityForging
-        .connect(user1)
-        .forgeWithListed(forgerTokenId, mergerTokenId, {
-          value: FORGING_FEE,
-        });
-      const finalBalance = await ethers.provider.getBalance(owner.address);
 
-      // Check event emissions
-      expect(tx)
-        .to.emit(entityForging, 'FeePaid')
-        .withArgs(forgerTokenId, mergerTokenId, FORGING_FEE);
+      await expect(
+        entityForging
+          .connect(user1)
+          .forgeWithListed(forgerTokenId, mergerTokenId, {
+            value: FORGING_FEE,
+          })
+      )
+        .to.emit(entityForging, 'EntityForged')
+        .withArgs(3, forgerTokenId, mergerTokenId, 396461, FORGING_FEE)
+        .to.emit(entityForging, 'ListedForForging')
+        .withArgs(0, 0);
+
+      const finalBalance = await ethers.provider.getBalance(owner.address);
 
       expect(finalBalance - initialBalance).to.be.eq((FORGING_FEE * 9n) / 10n);
       // Check forger nft delisted
