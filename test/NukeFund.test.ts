@@ -136,7 +136,15 @@ describe('NukeFund', function () {
       await owner.getAddress()
     );
     await nft.connect(owner).approve(await nukeFund.getAddress(), tokenId);
-    await nukeFund.connect(owner).nuke(tokenId);
+
+    const finalNukeFactor = await nukeFund.calculateNukeFactor(tokenId);
+    const fund = await nukeFund.getFundBalance();
+
+    await expect(nukeFund.connect(owner).nuke(tokenId))
+      .to.emit(nukeFund, 'Nuked')
+      .withArgs(owner, tokenId, (fund * finalNukeFactor) / 100000n)
+      .to.emit(nukeFund, 'FundBalanceUpdated')
+      .withArgs(fund - (fund * finalNukeFactor) / 100000n);
 
     const curUserEthBalance = await ethers.provider.getBalance(
       await owner.getAddress()
