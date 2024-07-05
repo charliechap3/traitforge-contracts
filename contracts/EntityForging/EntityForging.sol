@@ -15,9 +15,10 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
   uint256 public listingCount = 0;
   uint256 public minimumListFee = 0.01 ether;
 
+  /// @dev tokenid -> listings index
   mapping(uint256 => uint256) public listedTokenIds;
+  /// @dev index -> listing info
   mapping(uint256 => Listing) public listings;
-  mapping(uint256 => uint256) forgerListingFee;
   mapping(uint256 => uint8) public forgingCounts; // track forgePotential
   mapping(uint256 => uint256) private lastForgeResetTimestamp;
 
@@ -46,9 +47,8 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
 
   function fetchListings() external view returns (Listing[] memory _listings) {
     _listings = new Listing[](listingCount);
-    for (uint256 i = 0; i < listingCount; i++) {
-      uint256 tokenId = listedTokenIds[i];
-      _listings[i] = listings[tokenId];
+    for (uint256 i = 1; i <= listingCount; ++i) {
+      _listings[i - 1] = listings[i];
     }
   }
 
@@ -56,7 +56,9 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
     uint256 tokenId,
     uint256 fee
   ) public whenNotPaused nonReentrant {
-    require(!listings[tokenId].isListed, 'Token is already listed for forging');
+    Listing memory _listingInfo = listings[listedTokenIds[tokenId]];
+
+    require(!_listingInfo.isListed, 'Token is already listed for forging');
     require(
       nftContract.ownerOf(tokenId) == msg.sender,
       'Caller must own the token'
@@ -78,9 +80,9 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
     bool isForger = (entropy % 3) == 0; // Determine if the token is a forger based on entropy
     require(isForger, 'Only forgers can list for forging');
 
-    listings[tokenId] = Listing(msg.sender, tokenId, true, fee);
-    listedTokenIds[listingCount] = tokenId;
-    listingCount++;
+    ++listingCount;
+    listings[listingCount] = Listing(msg.sender, tokenId, true, fee);
+    listedTokenIds[tokenId] = listingCount;
 
     emit ListedForForging(tokenId, fee);
   }
@@ -89,8 +91,9 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
     uint256 forgerTokenId,
     uint256 mergerTokenId
   ) external payable whenNotPaused nonReentrant returns (uint256) {
+    Listing memory _forgerListingInfo = listings[listedTokenIds[forgerTokenId]];
     require(
-      listings[forgerTokenId].isListed,
+      _forgerListingInfo.isListed,
       "Forger's entity not listed for forging"
     );
     require(
@@ -107,7 +110,7 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
       'Invalid token generation'
     );
 
-    uint256 forgingFee = listings[forgerTokenId].fee;
+    uint256 forgingFee = _forgerListingInfo.fee;
     require(msg.value >= forgingFee, 'Insufficient fee for forging');
 
     _resetForgingCountIfNeeded(forgerTokenId); // Reset for forger if needed
@@ -166,15 +169,18 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
       nftContract.ownerOf(tokenId) == msg.sender,
       'Caller must own the token'
     );
-    require(listings[tokenId].isListed, 'Token not listed for forging');
+    require(
+      listings[listedTokenIds[tokenId]].isListed,
+      'Token not listed for forging'
+    );
 
     _cancelListingForForging(tokenId);
   }
 
   function _cancelListingForForging(uint256 tokenId) internal {
-    delete listings[tokenId];
+    delete listings[listedTokenIds[tokenId]];
 
-    emit ListedForForging(tokenId, 0); // Emitting with 0 fee to denote cancellation
+    emit CancelledListingForForging(tokenId); // Emitting with 0 fee to denote cancellation
   }
 
   function _resetForgingCountIfNeeded(uint256 tokenId) private {

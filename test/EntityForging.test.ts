@@ -77,7 +77,8 @@ describe('EntityForging', () => {
 
       await entityForging.connect(owner).listForForging(tokenId, fee);
 
-      const listing = await entityForging.listings(tokenId);
+      const listedTokenId = await entityForging.listedTokenIds(tokenId);
+      const listing = await entityForging.listings(listedTokenId);
       expect(listing.isListed).to.be.true;
       expect(listing.fee).to.equal(fee);
     });
@@ -122,8 +123,6 @@ describe('EntityForging', () => {
           (forgerEntropy + mergerEntrypy) / 2n,
           FORGING_FEE
         )
-        .to.emit(entityForging, 'ListedForForging')
-        .withArgs(0, 0)
         .to.emit(nft, 'NewEntityMinted')
         .withArgs(
           await user1.getAddress(),
@@ -131,7 +130,6 @@ describe('EntityForging', () => {
           2,
           (forgerEntropy + mergerEntrypy) / 2n
         );
-      // NewEntityMinted(newOwner, newTokenId, gen, entropy)
 
       const finalBalance = await ethers.provider.getBalance(owner.address);
 
