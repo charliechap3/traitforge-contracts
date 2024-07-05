@@ -46,9 +46,9 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
   }
 
   function fetchListings() external view returns (Listing[] memory _listings) {
-    _listings = new Listing[](listingCount);
+    _listings = new Listing[](listingCount + 1);
     for (uint256 i = 1; i <= listingCount; ++i) {
-      _listings[i - 1] = listings[i];
+      _listings[i] = listings[i];
     }
   }
 
