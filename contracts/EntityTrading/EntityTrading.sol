@@ -93,12 +93,6 @@ contract EntityTrading is IEntityTrading, ReentrancyGuard, Ownable, Pausable {
       'Only the seller can canel the listing.'
     );
     require(listing.isActive, 'Listing is not active.');
-    // Before transferring the NFT back, ensure the contract has permission
-    require(
-      nftContract.isApprovedForAll(listing.seller, address(this)) ||
-        nftContract.getApproved(tokenId) == address(this),
-      'Contract must have transfer approval'
-    );
 
     nftContract.transferFrom(address(this), msg.sender, tokenId); // transfer the nft back to seller
 
