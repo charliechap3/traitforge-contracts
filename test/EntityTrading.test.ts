@@ -23,14 +23,18 @@ describe('EntityTrading', function () {
       await nft.getAddress(),
     ]);
 
-    await nft.setApprovalForAll(await entityTrading.getAddress(), true);
-
     // Set NukeFund address
     await entityTrading.setNukeFundAddress(nukeFund.address);
 
     // Mint and approve the NFT for trading
     await nft.mintToken(owner.address);
-    await nft.approve(await entityTrading.getAddress(), TOKEN_ID);
+    await nft
+      .connect(owner)
+      .approve(await entityTrading.getAddress(), TOKEN_ID);
+    console.log(
+      await nft.getApproved(TOKEN_ID),
+      await entityTrading.getAddress()
+    );
   });
 
   it('should list an NFT for sale', async function () {
@@ -55,6 +59,7 @@ describe('EntityTrading', function () {
   });
 
   it('should list an NFT for sale', async function () {
+    await nft.approve(await entityTrading.getAddress(), TOKEN_ID);
     await entityTrading.listNFTForSale(TOKEN_ID, LISTING_PRICE);
 
     const listing = await entityTrading.listings(TOKEN_ID);
