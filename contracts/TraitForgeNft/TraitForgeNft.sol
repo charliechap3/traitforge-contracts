@@ -5,6 +5,7 @@ import '@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/Pausable.sol';
+import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import './ITraitForgeNft.sol';
 import '../EntityForging/IEntityForging.sol';
 import '../EntropyGenerator/IEntropyGenerator.sol';
@@ -31,6 +32,8 @@ contract TraitForgeNft is
   uint256 public currentGeneration = 1;
   /// @dev generation limit
   uint256 public maxGeneration = 10;
+  /// @dev merkle tree root hash
+  bytes32 public rootHash;
 
   // Mappings for token metadata
   mapping(uint256 => uint256) public tokenCreationTimestamps;
@@ -40,6 +43,11 @@ contract TraitForgeNft is
   mapping(uint256 => address) public initialOwners;
 
   uint256 private _tokenIds;
+
+  modifier onlyWhitelisted(bytes32[] calldata proof, bytes32 leaf) {
+    require(MerkleProof.verify(proof, rootHash, leaf), 'Not whitelisted user');
+    _;
+  }
 
   constructor() ERC721('TraitForgeNft', 'TFGNFT') {}
 
@@ -86,6 +94,10 @@ contract TraitForgeNft is
       "can't below than current generation"
     );
     maxGeneration = maxGeneration_;
+  }
+
+  function setRootHash(bytes32 rootHash_) external onlyOwner {
+    rootHash = rootHash_;
   }
 
   function getGeneration() public view returns (uint256) {
@@ -139,7 +151,15 @@ contract TraitForgeNft is
     return newTokenId;
   }
 
-  function mintToken() public payable whenNotPaused nonReentrant {
+  function mintToken(
+    bytes32[] calldata proof
+  )
+    public
+    payable
+    whenNotPaused
+    nonReentrant
+    onlyWhitelisted(proof, keccak256(abi.encodePacked(msg.sender)))
+  {
     uint256 mintPrice = calculateMintPrice();
     require(msg.value >= mintPrice, 'Insufficient ETH send for minting.');
 
@@ -152,7 +172,15 @@ contract TraitForgeNft is
     }
   }
 
-  function mintWithBudget() public payable whenNotPaused nonReentrant {
+  function mintWithBudget(
+    bytes32[] calldata proof
+  )
+    public
+    payable
+    whenNotPaused
+    nonReentrant
+    onlyWhitelisted(proof, keccak256(abi.encodePacked(msg.sender)))
+  {
     uint256 mintPrice = calculateMintPrice();
     uint256 amountMinted = 0;
     uint256 budgetLeft = msg.value;

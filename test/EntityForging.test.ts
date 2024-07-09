@@ -6,6 +6,7 @@ import {
   TraitForgeNft,
 } from '../typechain-types';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
+import generateMerkleTree from '../scripts/genMerkleTreeLib';
 
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
@@ -55,10 +56,28 @@ describe('EntityForging', () => {
 
     await nft.setNukeFundContract(user2.address);
 
+    const merkleInfo = generateMerkleTree([
+      owner.address,
+      user1.address,
+      user2.address,
+    ]);
+
+    await nft.setRootHash(merkleInfo.rootHash);
+
     // Mint some tokens for testing
-    await nft.connect(owner).mintToken({ value: ethers.parseEther('1') });
-    await nft.connect(user1).mintToken({ value: ethers.parseEther('1') });
-    await nft.connect(user1).mintToken({ value: ethers.parseEther('1') });
+    await nft.connect(owner).mintToken(merkleInfo.whitelist[0].proof, {
+      value: ethers.parseEther('1'),
+    });
+    await nft
+      .connect(user1)
+      .mintToken(merkleInfo.whitelist[1].proof, {
+        value: ethers.parseEther('1'),
+      });
+    await nft
+      .connect(user1)
+      .mintToken(merkleInfo.whitelist[1].proof, {
+        value: ethers.parseEther('1'),
+      });
   });
 
   describe('listForForging', () => {
