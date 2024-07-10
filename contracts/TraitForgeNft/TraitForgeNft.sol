@@ -18,8 +18,6 @@ contract TraitForgeNft is
   Ownable,
   Pausable
 {
-  uint256 public immutable WL_START_TIME;
-  uint256 public immutable WL_END_TIME;
   // Constants for token generation and pricing
   uint256 public maxTokensPerGen = 10000;
   uint256 public startPrice = 0.01 ether;
@@ -36,6 +34,8 @@ contract TraitForgeNft is
   uint256 public maxGeneration = 10;
   /// @dev merkle tree root hash
   bytes32 public rootHash;
+  /// @dev whitelist end time
+  uint256 public whitelistEndTime;
 
   // Mappings for token metadata
   mapping(uint256 => uint256) public tokenCreationTimestamps;
@@ -47,7 +47,7 @@ contract TraitForgeNft is
   uint256 private _tokenIds;
 
   modifier onlyWhitelisted(bytes32[] calldata proof, bytes32 leaf) {
-    if (block.timestamp > WL_START_TIME && block.timestamp <= WL_END_TIME) {
+    if (block.timestamp <= whitelistEndTime) {
       require(
         MerkleProof.verify(proof, rootHash, leaf),
         'Not whitelisted user'
@@ -57,8 +57,7 @@ contract TraitForgeNft is
   }
 
   constructor() ERC721('TraitForgeNft', 'TFGNFT') {
-    WL_START_TIME = block.timestamp;
-    WL_END_TIME = block.timestamp + 24 hours;
+    whitelistEndTime = block.timestamp + 24 hours;
   }
 
   // Function to set the nuke fund contract address, restricted to the owner
@@ -108,6 +107,10 @@ contract TraitForgeNft is
 
   function setRootHash(bytes32 rootHash_) external onlyOwner {
     rootHash = rootHash_;
+  }
+
+  function setWhitelistEndTime(uint256 endTime_) external onlyOwner {
+    whitelistEndTime = endTime_;
   }
 
   function getGeneration() public view returns (uint256) {
