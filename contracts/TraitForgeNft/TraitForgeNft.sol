@@ -18,6 +18,8 @@ contract TraitForgeNft is
   Ownable,
   Pausable
 {
+  uint256 public immutable WL_START_TIME;
+  uint256 public immutable WL_END_TIME;
   // Constants for token generation and pricing
   uint256 public maxTokensPerGen = 10000;
   uint256 public startPrice = 0.01 ether;
@@ -45,11 +47,19 @@ contract TraitForgeNft is
   uint256 private _tokenIds;
 
   modifier onlyWhitelisted(bytes32[] calldata proof, bytes32 leaf) {
-    require(MerkleProof.verify(proof, rootHash, leaf), 'Not whitelisted user');
+    if (block.timestamp > WL_START_TIME && block.timestamp <= WL_END_TIME) {
+      require(
+        MerkleProof.verify(proof, rootHash, leaf),
+        'Not whitelisted user'
+      );
+    }
     _;
   }
 
-  constructor() ERC721('TraitForgeNft', 'TFGNFT') {}
+  constructor() ERC721('TraitForgeNft', 'TFGNFT') {
+    WL_START_TIME = block.timestamp;
+    WL_END_TIME = block.timestamp + 24 hours;
+  }
 
   // Function to set the nuke fund contract address, restricted to the owner
   function setNukeFundContract(
