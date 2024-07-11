@@ -8,8 +8,9 @@ import {
   Airdrop,
   EntropyGenerator,
   EntityForging,
+  EntityTrading,
 } from '../typechain-types';
-import { fastForward } from '../utils';
+import generateMerkleTree from '../scripts/genMerkleTreeLib';
 
 describe('NukeFund', function () {
   let owner: HardhatEthersSigner,
@@ -18,8 +19,9 @@ describe('NukeFund', function () {
     nft: TraitForgeNft,
     devFund: DevFund,
     airdrop: Airdrop,
-    entityForging: EntityForging;
-
+    entityForging: EntityForging,
+    merkleInfo: any,
+    entityTrading: EntityTrading;
   beforeEach(async function () {
     [owner, user1] = await ethers.getSigners();
 
@@ -69,7 +71,19 @@ describe('NukeFund', function () {
     )) as EntityForging;
     await nft.setEntityForgingContract(await entityForging.getAddress());
 
-    await nft.connect(owner).mintToken({ value: ethers.parseEther('1') });
+    merkleInfo = generateMerkleTree([owner.address, user1.address]);
+
+    await nft.setRootHash(merkleInfo.rootHash);
+
+    entityTrading = await ethers.deployContract('EntityTrading', [
+      await nft.getAddress(),
+    ]);
+
+    await entityTrading.setNukeFundAddress(await nukeFund.getAddress());
+
+    await nft.connect(owner).mintToken(merkleInfo.whitelist[0].proof, {
+      value: ethers.parseEther('1'),
+    });
     // Set minimumDaysHeld to 0 for testing purpose
     await nukeFund.setMinimumDaysHeld(0);
   });
@@ -120,7 +134,9 @@ describe('NukeFund', function () {
     const tokenId = 1;
 
     // Mint a token
-    await nft.connect(owner).mintToken({ value: ethers.parseEther('1') });
+    await nft.connect(owner).mintToken(merkleInfo.whitelist[0].proof, {
+      value: ethers.parseEther('1'),
+    });
 
     // Send some funds to the contract
     await user1.sendTransaction({

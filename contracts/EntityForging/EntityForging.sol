@@ -52,6 +52,18 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
     }
   }
 
+  function getListedTokenIds(
+    uint tokenId_
+  ) external view override returns (uint) {
+    return listedTokenIds[tokenId_];
+  }
+
+  function getListings(
+    uint id
+  ) external view override returns (Listing memory) {
+    return listings[id];
+  }
+
   function listForForging(
     uint256 tokenId,
     uint256 fee
@@ -166,7 +178,8 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
     uint256 tokenId
   ) external whenNotPaused nonReentrant {
     require(
-      nftContract.ownerOf(tokenId) == msg.sender,
+      nftContract.ownerOf(tokenId) == msg.sender ||
+        msg.sender == address(nftContract),
       'Caller must own the token'
     );
     require(

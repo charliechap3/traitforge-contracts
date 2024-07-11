@@ -38,4 +38,6 @@ interface IEntityForging {
   function cancelListingForForging(uint256 tokenId) external;
 
   function fetchListings() external view returns (Listing[] memory);
+  function getListedTokenIds(uint tokenId_) external view returns (uint);
+  function getListings(uint id) external view returns (Listing memory);
 }

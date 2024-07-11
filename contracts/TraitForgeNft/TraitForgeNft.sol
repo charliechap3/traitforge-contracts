@@ -5,6 +5,7 @@ import '@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/Pausable.sol';
+import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import './ITraitForgeNft.sol';
 import '../EntityForging/IEntityForging.sol';
 import '../EntropyGenerator/IEntropyGenerator.sol';
@@ -31,6 +32,10 @@ contract TraitForgeNft is
   uint256 public currentGeneration = 1;
   /// @dev generation limit
   uint256 public maxGeneration = 10;
+  /// @dev merkle tree root hash
+  bytes32 public rootHash;
+  /// @dev whitelist end time
+  uint256 public whitelistEndTime;
 
   // Mappings for token metadata
   mapping(uint256 => uint256) public tokenCreationTimestamps;
@@ -41,7 +46,19 @@ contract TraitForgeNft is
 
   uint256 private _tokenIds;
 
-  constructor() ERC721('TraitForgeNft', 'TFGNFT') {}
+  modifier onlyWhitelisted(bytes32[] calldata proof, bytes32 leaf) {
+    if (block.timestamp <= whitelistEndTime) {
+      require(
+        MerkleProof.verify(proof, rootHash, leaf),
+        'Not whitelisted user'
+      );
+    }
+    _;
+  }
+
+  constructor() ERC721('TraitForgeNft', 'TFGNFT') {
+    whitelistEndTime = block.timestamp + 24 hours;
+  }
 
   // Function to set the nuke fund contract address, restricted to the owner
   function setNukeFundContract(
@@ -53,19 +70,25 @@ contract TraitForgeNft is
 
   // Function to set the entity merging (breeding) contract address, restricted to the owner
   function setEntityForgingContract(
-    address _entityForgingAddress
+    address entityForgingAddress_
   ) external onlyOwner {
-    entityForgingContract = IEntityForging(_entityForgingAddress);
+    require(entityForgingAddress_ != address(0), 'Invalid address');
+
+    entityForgingContract = IEntityForging(entityForgingAddress_);
   }
 
   function setEntropyGenerator(
-    address _entropyGeneratorAddress
+    address entropyGeneratorAddress_
   ) external onlyOwner {
-    entropyGenerator = IEntropyGenerator(_entropyGeneratorAddress);
+    require(entropyGeneratorAddress_ != address(0), 'Invalid address');
+
+    entropyGenerator = IEntropyGenerator(entropyGeneratorAddress_);
   }
 
-  function setAirdropContract(address _airdrop) external onlyOwner {
-    airdropContract = IAirdrop(_airdrop);
+  function setAirdropContract(address airdrop_) external onlyOwner {
+    require(airdrop_ != address(0), 'Invalid address');
+
+    airdropContract = IAirdrop(airdrop_);
   }
 
   function startAirdrop(uint256 amount) external whenNotPaused onlyOwner {
@@ -86,6 +109,14 @@ contract TraitForgeNft is
       "can't below than current generation"
     );
     maxGeneration = maxGeneration_;
+  }
+
+  function setRootHash(bytes32 rootHash_) external onlyOwner {
+    rootHash = rootHash_;
+  }
+
+  function setWhitelistEndTime(uint256 endTime_) external onlyOwner {
+    whitelistEndTime = endTime_;
   }
 
   function getGeneration() public view returns (uint256) {
@@ -139,7 +170,15 @@ contract TraitForgeNft is
     return newTokenId;
   }
 
-  function mintToken() public payable whenNotPaused nonReentrant {
+  function mintToken(
+    bytes32[] calldata proof
+  )
+    public
+    payable
+    whenNotPaused
+    nonReentrant
+    onlyWhitelisted(proof, keccak256(abi.encodePacked(msg.sender)))
+  {
     uint256 mintPrice = calculateMintPrice();
     require(msg.value >= mintPrice, 'Insufficient ETH send for minting.');
 
@@ -152,7 +191,15 @@ contract TraitForgeNft is
     }
   }
 
-  function mintWithBudget() public payable whenNotPaused nonReentrant {
+  function mintWithBudget(
+    bytes32[] calldata proof
+  )
+    public
+    payable
+    whenNotPaused
+    nonReentrant
+    onlyWhitelisted(proof, keccak256(abi.encodePacked(msg.sender)))
+  {
     uint256 mintPrice = calculateMintPrice();
     uint256 amountMinted = 0;
     uint256 budgetLeft = msg.value;
@@ -309,6 +356,21 @@ contract TraitForgeNft is
     uint256 batchSize
   ) internal virtual override {
     super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+
+    uint listedId = entityForgingContract.getListedTokenIds(firstTokenId);
+
+    if (listedId > 0) {
+      IEntityForging.Listing memory listing = entityForgingContract.getListings(
+        listedId
+      );
+      if (
+        listing.tokenId == firstTokenId &&
+        listing.account == from &&
+        listing.isListed
+      ) {
+        entityForgingContract.cancelListingForForging(firstTokenId);
+      }
+    }
 
     require(!paused(), 'ERC721Pausable: token transfer while paused');
   }
