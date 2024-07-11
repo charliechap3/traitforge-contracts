@@ -357,14 +357,16 @@ contract TraitForgeNft is
   ) internal virtual override {
     super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
 
-    IEntityForging.Listing[] memory listings = entityForgingContract
-      .fetchListings();
+    uint listedId = entityForgingContract.getListedTokenIds(firstTokenId);
 
-    for (uint i = 1; i < listings.length; ++i) {
+    if (listedId > 0) {
+      IEntityForging.Listing memory listing = entityForgingContract.getListings(
+        listedId
+      );
       if (
-        listings[i].tokenId == firstTokenId &&
-        listings[i].account == from &&
-        listings[i].isListed
+        listing.tokenId == firstTokenId &&
+        listing.account == from &&
+        listing.isListed
       ) {
         entityForgingContract.cancelListingForForging(firstTokenId);
       }
