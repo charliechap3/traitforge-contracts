@@ -1,8 +1,11 @@
 import { parseEther } from 'ethers';
 import {
   Airdrop,
+  DevFund,
   EntityForging,
   EntropyGenerator,
+  EntityTrading,
+  NukeFund,
   TraitForgeNft,
 } from '../typechain-types';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
@@ -17,11 +20,15 @@ describe('EntityForging', () => {
   let owner: HardhatEthersSigner;
   let user1: HardhatEthersSigner;
   let user2: HardhatEthersSigner;
+  let user3: HardhatEthersSigner;
+  let entityTrading: EntityTrading;
+  let nukeFund: NukeFund;
+  let devFund: DevFund;
 
   const FORGING_FEE = ethers.parseEther('1.0'); // 1 ETH
 
   before(async () => {
-    [owner, user1, user2] = await ethers.getSigners();
+    [owner, user1, user2, user3] = await ethers.getSigners();
 
     // Deploy TraitForgeNft contract
     const TraitForgeNft = await ethers.getContractFactory('TraitForgeNft');
@@ -54,7 +61,27 @@ describe('EntityForging', () => {
     )) as EntityForging;
     await nft.setEntityForgingContract(await entityForging.getAddress());
 
-    await nft.setNukeFundContract(user2.address);
+    devFund = await ethers.deployContract('DevFund');
+    await devFund.waitForDeployment();
+
+    const NukeFund = await ethers.getContractFactory('NukeFund');
+
+    nukeFund = (await NukeFund.deploy(
+      await nft.getAddress(),
+      await airdrop.getAddress(),
+      await devFund.getAddress(),
+      owner.address
+    )) as NukeFund;
+    await nukeFund.waitForDeployment();
+
+    await nft.setNukeFundContract(await nukeFund.getAddress());
+
+    entityTrading = await ethers.deployContract('EntityTrading', [
+      await nft.getAddress(),
+    ]);
+
+    // Set NukeFund address
+    await entityTrading.setNukeFundAddress(await nukeFund.getAddress());
 
     const merkleInfo = generateMerkleTree([
       owner.address,
@@ -68,16 +95,12 @@ describe('EntityForging', () => {
     await nft.connect(owner).mintToken(merkleInfo.whitelist[0].proof, {
       value: ethers.parseEther('1'),
     });
-    await nft
-      .connect(user1)
-      .mintToken(merkleInfo.whitelist[1].proof, {
-        value: ethers.parseEther('1'),
-      });
-    await nft
-      .connect(user1)
-      .mintToken(merkleInfo.whitelist[1].proof, {
-        value: ethers.parseEther('1'),
-      });
+    await nft.connect(user1).mintToken(merkleInfo.whitelist[1].proof, {
+      value: ethers.parseEther('1'),
+    });
+    await nft.connect(user1).mintToken(merkleInfo.whitelist[1].proof, {
+      value: ethers.parseEther('1'),
+    });
   });
 
   describe('listForForging', () => {
@@ -158,6 +181,28 @@ describe('EntityForging', () => {
       const listingInfo = await entityForging.listings(forgerTokenId);
 
       expect(listingInfo.isListed).to.be.eq(false);
+    });
+  });
+
+  describe('Auto cancel listing after list for sale in EntityTrading', () => {
+    it('Shoudl cancel list for forging after list for sale in Entity Trading', async () => {
+      const tokenId = 0;
+      const fee = FORGING_FEE;
+      const LISTING_PRICE = ethers.parseEther('1.0');
+
+      await entityForging.connect(owner).listForForging(tokenId, fee);
+
+      await nft
+        .connect(owner)
+        .approve(await entityTrading.getAddress(), tokenId);
+
+      await entityTrading.connect(owner).listNFTForSale(0, LISTING_PRICE);
+
+      // Check the token is unlisted in entity forging
+      const listedTokenId = await entityForging.listedTokenIds(tokenId);
+      const listing = await entityForging.listings(listedTokenId);
+      expect(listing.isListed).to.be.false;
+      // expect(listing.fee).to.equal(fee);
     });
   });
 });

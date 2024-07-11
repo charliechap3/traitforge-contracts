@@ -1,7 +1,10 @@
 import {
   Airdrop,
+  DevFund,
   EntityForging,
   EntropyGenerator,
+  EntityTrading,
+  NukeFund,
   TraitForgeNft,
 } from '../typechain-types';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
@@ -17,9 +20,10 @@ describe('TraitForgeNFT', () => {
   let owner: HardhatEthersSigner;
   let user1: HardhatEthersSigner;
   let user2: HardhatEthersSigner;
+  let entityTrading: EntityTrading;
+  let nukeFund: NukeFund;
+  let devFund: DevFund;
   let merkleInfo: any;
-
-  const FORGING_FEE = ethers.parseEther('1.0'); // 1 ETH
 
   before(async () => {
     [owner, user1, user2] = await ethers.getSigners();
@@ -55,9 +59,33 @@ describe('TraitForgeNFT', () => {
     )) as EntityForging;
     await nft.setEntityForgingContract(await entityForging.getAddress());
 
-    await nft.setNukeFundContract(user2.address);
+    devFund = await ethers.deployContract('DevFund');
+    await devFund.waitForDeployment();
 
-    merkleInfo = generateMerkleTree([owner.address, user1.address]);
+    const NukeFund = await ethers.getContractFactory('NukeFund');
+
+    nukeFund = (await NukeFund.deploy(
+      await nft.getAddress(),
+      await airdrop.getAddress(),
+      await devFund.getAddress(),
+      owner.address
+    )) as NukeFund;
+    await nukeFund.waitForDeployment();
+
+    await nft.setNukeFundContract(await nukeFund.getAddress());
+
+    entityTrading = await ethers.deployContract('EntityTrading', [
+      await nft.getAddress(),
+    ]);
+
+    // Set NukeFund address
+    await entityTrading.setNukeFundAddress(await nukeFund.getAddress());
+
+    merkleInfo = generateMerkleTree([
+      owner.address,
+      user1.address,
+      user2.address,
+    ]);
 
     await nft.setRootHash(merkleInfo.rootHash);
   });

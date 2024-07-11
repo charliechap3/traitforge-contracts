@@ -70,19 +70,25 @@ contract TraitForgeNft is
 
   // Function to set the entity merging (breeding) contract address, restricted to the owner
   function setEntityForgingContract(
-    address _entityForgingAddress
+    address entityForgingAddress_
   ) external onlyOwner {
-    entityForgingContract = IEntityForging(_entityForgingAddress);
+    require(entityForgingAddress_ != address(0), 'Invalid address');
+
+    entityForgingContract = IEntityForging(entityForgingAddress_);
   }
 
   function setEntropyGenerator(
-    address _entropyGeneratorAddress
+    address entropyGeneratorAddress_
   ) external onlyOwner {
-    entropyGenerator = IEntropyGenerator(_entropyGeneratorAddress);
+    require(entropyGeneratorAddress_ != address(0), 'Invalid address');
+
+    entropyGenerator = IEntropyGenerator(entropyGeneratorAddress_);
   }
 
-  function setAirdropContract(address _airdrop) external onlyOwner {
-    airdropContract = IAirdrop(_airdrop);
+  function setAirdropContract(address airdrop_) external onlyOwner {
+    require(airdrop_ != address(0), 'Invalid address');
+
+    airdropContract = IAirdrop(airdrop_);
   }
 
   function startAirdrop(uint256 amount) external whenNotPaused onlyOwner {
@@ -350,6 +356,19 @@ contract TraitForgeNft is
     uint256 batchSize
   ) internal virtual override {
     super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+
+    IEntityForging.Listing[] memory listings = entityForgingContract
+      .fetchListings();
+
+    for (uint i = 1; i < listings.length; ++i) {
+      if (
+        listings[i].tokenId == firstTokenId &&
+        listings[i].account == from &&
+        listings[i].isListed
+      ) {
+        entityForgingContract.cancelListingForForging(firstTokenId);
+      }
+    }
 
     require(!paused(), 'ERC721Pausable: token transfer while paused');
   }

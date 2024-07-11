@@ -166,7 +166,8 @@ contract EntityForging is IEntityForging, ReentrancyGuard, Ownable, Pausable {
     uint256 tokenId
   ) external whenNotPaused nonReentrant {
     require(
-      nftContract.ownerOf(tokenId) == msg.sender,
+      nftContract.ownerOf(tokenId) == msg.sender ||
+        msg.sender == address(nftContract),
       'Caller must own the token'
     );
     require(

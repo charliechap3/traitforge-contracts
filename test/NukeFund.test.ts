@@ -8,6 +8,7 @@ import {
   Airdrop,
   EntropyGenerator,
   EntityForging,
+  EntityTrading,
 } from '../typechain-types';
 import generateMerkleTree from '../scripts/genMerkleTreeLib';
 
@@ -19,8 +20,8 @@ describe('NukeFund', function () {
     devFund: DevFund,
     airdrop: Airdrop,
     entityForging: EntityForging,
-    merkleInfo: any;
-
+    merkleInfo: any,
+    entityTrading: EntityTrading;
   beforeEach(async function () {
     [owner, user1] = await ethers.getSigners();
 
@@ -73,6 +74,12 @@ describe('NukeFund', function () {
     merkleInfo = generateMerkleTree([owner.address, user1.address]);
 
     await nft.setRootHash(merkleInfo.rootHash);
+
+    entityTrading = await ethers.deployContract('EntityTrading', [
+      await nft.getAddress(),
+    ]);
+
+    await entityTrading.setNukeFundAddress(await nukeFund.getAddress());
 
     await nft.connect(owner).mintToken(merkleInfo.whitelist[0].proof, {
       value: ethers.parseEther('1'),
