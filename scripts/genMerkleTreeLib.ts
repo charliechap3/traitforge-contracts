@@ -11,7 +11,7 @@ const generateMerkleTree = (address: string[]) => {
   });
 
   //  Utility Function to Convert From Buffer to Hex
-  const buf2Hex = x => '0x' + x.toString('hex');
+  const buf2Hex = (x: any) => '0x' + x.toString('hex');
 
   // Get Root of Merkle Tree
   console.log(`Here is Root Hash: ${buf2Hex(tree.getRoot())}`);
