@@ -12,7 +12,9 @@ import {
   TraitForgeNft,
 } from '../typechain-types';
 import { ethers } from 'ethers';
-import { DEPLOYED_CONTRACTS, UNISWAP_ROUTER } from '../consts';
+import { UNISWAP_ROUTER } from '../consts';
+import generateMerkleTree from './genMerkleTreeLib';
+import { WHITELIST } from '../consts/whitelist';
 
 task('deploy-all', 'Deploy all the contracts').setAction(async (_, hre) => {
   const token: Trait = await hre.run('deploy-token');
@@ -24,7 +26,7 @@ task('deploy-all', 'Deploy all the contracts').setAction(async (_, hre) => {
   const entityTrading: EntityTrading = await hre.run('deploy-entity-trading', {
     nft: await nft.getAddress(),
   });
-  const entityForging: EntityForging = await hre.run('deploy-entity-merging', {
+  const entityForging: EntityForging = await hre.run('deploy-entity-forging', {
     nft: await nft.getAddress(),
   });
   const devFund: DevFund = await hre.run('deploy-dev-fund');
@@ -47,6 +49,17 @@ task('deploy-all', 'Deploy all the contracts').setAction(async (_, hre) => {
   await entityForging.setNukeFundAddress(await nukeFund.getAddress());
   await airdrop.setTraitToken(await token.getAddress());
   await airdrop.transferOwnership(await nft.getAddress());
+
+  console.log('Generating Merkle Tree...');
+  const { rootHash } = generateMerkleTree(WHITELIST);
+  await nft.setRootHash(rootHash);
+  console.log('Generated & Set the root hash successfully.');
+
+  console.log('Writing EntropyBatch...');
+  await entropyGenerator.writeEntropyBatch1();
+  await entropyGenerator.writeEntropyBatch2();
+  await entropyGenerator.writeEntropyBatch3();
+  console.log('Writing EntropyBatch done.');
 });
 
 task('deploy-token', 'Deploy Trait Token').setAction(async (_, hre) => {
@@ -120,7 +133,7 @@ task('deploy-entity-trading', 'Deploy EntityTrading')
     return null;
   });
 
-task('deploy-entity-merging', 'Deploy EntityForging')
+task('deploy-entity-forging', 'Deploy EntityForging')
   .addParam('nft', 'The address of TraitForgeNft')
   .setAction(async (taskArguments, hre) => {
     try {
@@ -203,17 +216,3 @@ task('deploy-nuke-fund', 'Deploy NukeFund')
     }
     return null;
   });
-
-task('issue-fix', 'Issue fix').setAction(async (_, hre) => {
-  const entityForging: EntityForging = await hre.run('deploy-entity-merging', {
-    nft: DEPLOYED_CONTRACTS.sepolia.TraitForgeNft,
-  });
-
-  const nft = await hre.ethers.getContractAt(
-    'TraitForgeNft',
-    DEPLOYED_CONTRACTS.sepolia.TraitForgeNft
-  );
-  await nft.setEntityForgingContract(await entityForging.getAddress());
-
-  await entityForging.setNukeFundAddress(DEPLOYED_CONTRACTS.sepolia.NukeFund);
-});

@@ -1,18 +1,13 @@
 const fs = require('fs');
+import { WHITELIST } from '../consts/whitelist';
 import generateMerkleTree from './genMerkleTreeLib';
 
 async function main() {
-  const address: string[] = [];
+  const data = generateMerkleTree(WHITELIST);
 
-  const data = generateMerkleTree(address);
+  const metadata = JSON.stringify(data, null, 2);
 
-  let whitelistedUsers = {
-    whiteList: data,
-  };
-
-  const metadata = JSON.stringify(whitelistedUsers, null, 2);
-
-  fs.writeFile(`WL.json`, metadata, (err: any) => {
+  fs.writeFile(`consts/merkle.json`, metadata, (err: any) => {
     if (err) {
       throw err;
     }
