@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 interface IEntityTrading {
   struct Listing {
     address seller; // address of NFT seller
+    uint256 tokenId; // token id of NFT
     uint256 price; // Price of the NFT in wei
     bool isActive; // flag to check if the listing is active
   }

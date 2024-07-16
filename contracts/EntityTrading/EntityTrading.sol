@@ -13,6 +13,10 @@ contract EntityTrading is IEntityTrading, ReentrancyGuard, Ownable, Pausable {
   address payable public nukeFundAddress;
   uint256 public taxCut = 10;
 
+  uint256 public listingCount = 0;
+  /// @dev tokenid -> listings index
+  mapping(uint256 => uint256) public listedTokenIds;
+  /// @dev index -> listing info
   mapping(uint256 => Listing) public listings;
 
   constructor(address _traitForgeNft) {
@@ -47,14 +51,17 @@ contract EntityTrading is IEntityTrading, ReentrancyGuard, Ownable, Pausable {
     );
 
     nftContract.transferFrom(msg.sender, address(this), tokenId); // trasnfer NFT to contract
-    listings[tokenId] = Listing(msg.sender, price, true); // create new listing
+
+    ++listingCount;
+    listings[listingCount] = Listing(msg.sender, tokenId, price, true);
+    listedTokenIds[tokenId] = listingCount;
 
     emit NFTListed(tokenId, msg.sender, price);
   }
 
   // function to buy an NFT listed for sale
   function buyNFT(uint256 tokenId) external payable whenNotPaused nonReentrant {
-    Listing memory listing = listings[tokenId];
+    Listing memory listing = listings[listedTokenIds[tokenId]];
     require(
       msg.value == listing.price,
       'ETH sent does not match the listing price'
@@ -73,7 +80,7 @@ contract EntityTrading is IEntityTrading, ReentrancyGuard, Ownable, Pausable {
     require(success, 'Failed to send to seller');
     nftContract.transferFrom(address(this), msg.sender, tokenId); // transfer NFT to the buyer
 
-    delete listings[tokenId]; // remove listing
+    delete listings[listedTokenIds[tokenId]]; // remove listing
 
     emit NFTSold(
       tokenId,
@@ -85,7 +92,7 @@ contract EntityTrading is IEntityTrading, ReentrancyGuard, Ownable, Pausable {
   }
 
   function cancelListing(uint256 tokenId) public whenNotPaused nonReentrant {
-    Listing storage listing = listings[tokenId];
+    Listing storage listing = listings[listedTokenIds[tokenId]];
 
     // check if caller is the seller and listing is acivte
     require(
@@ -96,7 +103,7 @@ contract EntityTrading is IEntityTrading, ReentrancyGuard, Ownable, Pausable {
 
     nftContract.transferFrom(address(this), msg.sender, tokenId); // transfer the nft back to seller
 
-    delete listings[tokenId]; // mark the listing as inactive or delete it
+    delete listings[listedTokenIds[tokenId]]; // mark the listing as inactive or delete it
 
     emit ListingCanceled(tokenId, msg.sender);
   }
@@ -124,7 +131,7 @@ contract EntityTrading is IEntityTrading, ReentrancyGuard, Ownable, Pausable {
     prices = new uint256[](totalListings);
 
     uint256 currentIndex = 0;
-    for (uint256 i = 0; i < _getNextTokenId(); i++) {
+    for (uint256 i = 1; i <= listingCount; ++i) {
       if (listings[i].isActive) {
         tokenIds[currentIndex] = i;
         sellers[currentIndex] = listings[i].seller;
@@ -136,15 +143,11 @@ contract EntityTrading is IEntityTrading, ReentrancyGuard, Ownable, Pausable {
 
   function _getActiveListingCount() private view returns (uint256) {
     uint256 count = 0;
-    for (uint256 i = 0; i < _getNextTokenId(); i++) {
+    for (uint256 i = 1; i <= listingCount; i++) {
       if (listings[i].isActive) {
         count++;
       }
     }
     return count;
-  }
-
-  function _getNextTokenId() private view returns (uint256) {
-    return nftContract.totalSupply();
   }
 }
