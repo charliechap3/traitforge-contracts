@@ -37,6 +37,17 @@ contract DevFund is IDevFund, Ownable, ReentrancyGuard, Pausable {
     emit AddDev(user, weight);
   }
 
+  function updateDev(address user, uint256 weight) external onlyOwner {
+    DevInfo storage info = devInfo[user];
+    require(weight > 0, 'Invalid weight');
+    require(info.weight > 0, 'Not dev address');
+    totalDevWeight = totalDevWeight - info.weight + weight;
+    info.pendingRewards += (totalRewardDebt - info.rewardDebt) * info.weight;
+    info.rewardDebt = totalRewardDebt;
+    info.weight = weight;
+    emit UpdateDev(user, weight);
+  }
+
   function removeDev(address user) external onlyOwner {
     DevInfo storage info = devInfo[user];
     require(info.weight > 0, 'Not dev address');
@@ -66,7 +77,7 @@ contract DevFund is IDevFund, Ownable, ReentrancyGuard, Pausable {
   function pendingRewards(address user) external view returns (uint256) {
     DevInfo storage info = devInfo[user];
     return
-      info.pendingRewards + (totalDevWeight - info.rewardDebt) * info.weight;
+      info.pendingRewards + (totalRewardDebt - info.rewardDebt) * info.weight;
   }
 
   function safeRewardTransfer(

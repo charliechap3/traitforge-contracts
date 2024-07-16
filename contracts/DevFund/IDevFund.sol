@@ -9,6 +9,7 @@ interface IDevFund {
   }
 
   event AddDev(address indexed dev, uint256 weight);
+  event UpdateDev(address indexed dev, uint256 weight);
   event RemoveDev(address indexed dev);
   event Claim(address indexed dev, uint256 amount);
   event FundReceived(address indexed from, uint256 amount); // Log the received funds
