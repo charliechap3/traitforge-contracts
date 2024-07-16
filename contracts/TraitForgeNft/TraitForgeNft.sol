@@ -251,7 +251,7 @@ contract TraitForgeNft is
       ownerOf(tokenId) != address(0),
       'ERC721: query for nonexistent token'
     );
-    return block.timestamp - lastTokenTransferredTimestamp[tokenId];
+    return lastTokenTransferredTimestamp[tokenId];
   }
 
   function getTokenCreationTimestamp(
