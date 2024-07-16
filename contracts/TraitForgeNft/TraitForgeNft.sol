@@ -39,6 +39,7 @@ contract TraitForgeNft is
 
   // Mappings for token metadata
   mapping(uint256 => uint256) public tokenCreationTimestamps;
+  mapping(uint256 => uint256) public lastTokenTransferredTimestamp;
   mapping(uint256 => uint256) public tokenEntropy;
   mapping(uint256 => uint256) public generationMintCounts;
   mapping(uint256 => uint256) public tokenGenerations;
@@ -243,12 +244,14 @@ contract TraitForgeNft is
     mergerEntropy = getTokenEntropy(mergerTokenId);
   }
 
-  function getTokenAge(uint256 tokenId) public view returns (uint256) {
+  function getTokenLastTransferredTimestamp(
+    uint256 tokenId
+  ) public view returns (uint256) {
     require(
       ownerOf(tokenId) != address(0),
       'ERC721: query for nonexistent token'
     );
-    return block.timestamp - tokenCreationTimestamps[tokenId];
+    return lastTokenTransferredTimestamp[tokenId];
   }
 
   function getTokenCreationTimestamp(
@@ -361,6 +364,10 @@ contract TraitForgeNft is
     super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
 
     uint listedId = entityForgingContract.getListedTokenIds(firstTokenId);
+    /// @dev don't update the transferred timestamp if from and to address are same
+    if (from != to) {
+      lastTokenTransferredTimestamp[firstTokenId] = block.timestamp;
+    }
 
     if (listedId > 0) {
       IEntityForging.Listing memory listing = entityForgingContract.getListings(

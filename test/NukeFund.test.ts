@@ -11,6 +11,7 @@ import {
   EntityTrading,
 } from '../typechain-types';
 import generateMerkleTree from '../scripts/genMerkleTreeLib';
+import { fastForward } from '../utils/evm';
 
 describe('NukeFund', function () {
   let owner: HardhatEthersSigner,
@@ -32,7 +33,7 @@ describe('NukeFund', function () {
     devFund = await ethers.deployContract('DevFund');
     await devFund.waitForDeployment();
 
-    await devFund.addDev(owner.address);
+    await devFund.addDev(owner.address, 1);
 
     airdrop = await ethers.deployContract('Airdrop');
     await airdrop.waitForDeployment();
@@ -172,5 +173,25 @@ describe('NukeFund', function () {
     // expect(await nft.ownerOf(tokenId)).to.equal(ethers.ZeroAddress);
     expect(await nft.balanceOf(owner)).to.eq(1);
     expect(curNukeFundBal).to.be.lt(prevNukeFundBal);
+  });
+
+  it('lastTransferredTimestamp should be updated after token transfer', async () => {
+    await nukeFund.setMinimumDaysHeld(10);
+    await nft.connect(owner).mintToken(merkleInfo.whitelist[0].proof, {
+      value: ethers.parseEther('1'),
+    });
+
+    await fastForward(5);
+    expect(await nukeFund.canTokenBeNuked(2)).to.be.false;
+    await fastForward(10);
+    expect(await nukeFund.canTokenBeNuked(2)).to.be.true;
+
+    await nft
+      .connect(owner)
+      .transferFrom(await owner.getAddress(), await user1.getAddress(), 2);
+
+    expect(await nukeFund.canTokenBeNuked(2)).to.be.false;
+    await fastForward(10);
+    expect(await nukeFund.canTokenBeNuked(2)).to.be.true;
   });
 });

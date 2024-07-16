@@ -187,9 +187,9 @@ contract NukeFund is INukeFund, ReentrancyGuard, Ownable, Pausable {
       nftContract.ownerOf(tokenId) != address(0),
       'ERC721: operator query for nonexistent token'
     );
-    // Get the age of the token in seconds from the ERC721 contract
-    uint256 tokenAgeInSeconds = nftContract.getTokenAge(tokenId);
-    // Assuming tokenAgeInSeconds is the age of the token since its creation, check if it's at least 3 days old
+    uint256 tokenAgeInSeconds = block.timestamp -
+      nftContract.getTokenLastTransferredTimestamp(tokenId);
+    // Assuming tokenAgeInSeconds is the age of the token since it's holding the nft, check if it's over minimum days held
     return tokenAgeInSeconds >= minimumDaysHeld;
   }
 }

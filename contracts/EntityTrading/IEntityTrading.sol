@@ -35,13 +35,4 @@ interface IEntityTrading {
   function buyNFT(uint256 tokenId) external payable;
 
   function cancelListing(uint256 tokenId) external;
-
-  function fetchListedEntities()
-    external
-    view
-    returns (
-      uint256[] memory tokenIds,
-      address[] memory sellers,
-      uint256[] memory prices
-    );
 }
