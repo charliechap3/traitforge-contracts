@@ -271,7 +271,9 @@ contract TraitForgeNft is
     if (generationMintCounts[currentGeneration] >= maxTokensPerGen) {
       _incrementGeneration();
     }
-    uint256 newItemId = _tokenIds++;
+
+    _tokenIds++;
+    uint256 newItemId = _tokenIds;
     _mint(to, newItemId);
     uint256 entropyValue = entropyGenerator.getNextEntropy();
 
@@ -306,7 +308,8 @@ contract TraitForgeNft is
       'Exceeds maxTokensPerGen'
     );
 
-    uint256 newTokenId = _tokenIds++;
+    _tokenIds++;
+    uint256 newTokenId = _tokenIds;
     _mint(newOwner, newTokenId);
 
     tokenEntropy[newTokenId] = entropy;
