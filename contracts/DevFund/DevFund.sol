@@ -7,14 +7,19 @@ import '@openzeppelin/contracts/security/Pausable.sol';
 import './IDevFund.sol';
 
 contract DevFund is IDevFund, Ownable, ReentrancyGuard, Pausable {
-  uint256 public totalDevCount;
-  uint256 public rewardPerDev;
-  mapping(address => bool) public isDev;
+  uint256 public totalDevWeight;
+  uint256 public totalRewardDebt;
   mapping(address => DevInfo) public devInfo;
 
   receive() external payable {
-    if (totalDevCount > 0) {
-      rewardPerDev += msg.value / totalDevCount;
+    if (totalDevWeight > 0) {
+      uint256 amountPerWeight = msg.value / totalDevWeight;
+      uint256 remaining = msg.value - (amountPerWeight * totalDevWeight);
+      totalRewardDebt += amountPerWeight;
+      if (remaining > 0) {
+        (bool success, ) = payable(owner()).call{ value: remaining }('');
+        require(success, 'Failed to send Ether to owner');
+      }
     } else {
       (bool success, ) = payable(owner()).call{ value: msg.value }('');
       require(success, 'Failed to send Ether to owner');
@@ -22,27 +27,32 @@ contract DevFund is IDevFund, Ownable, ReentrancyGuard, Pausable {
     emit FundReceived(msg.sender, msg.value);
   }
 
-  function addDev(address user) external onlyOwner {
-    require(!isDev[user], 'Already registered');
-    isDev[user] = true;
-    totalDevCount += 1;
-    devInfo[user].rewardDebt = rewardPerDev;
-    emit AddDev(user);
+  function addDev(address user, uint256 weight) external onlyOwner {
+    DevInfo storage info = devInfo[user];
+    require(weight > 0, 'Invalid weight');
+    require(info.weight == 0, 'Already registered');
+    info.rewardDebt = totalRewardDebt;
+    info.weight = weight;
+    totalDevWeight += weight;
+    emit AddDev(user, weight);
   }
 
   function removeDev(address user) external onlyOwner {
-    require(isDev[user], 'Not dev address');
-    isDev[user] = false;
-    totalDevCount -= 1;
-    devInfo[user].pendingRewards += rewardPerDev - devInfo[user].rewardDebt;
-    devInfo[user].rewardDebt = rewardPerDev;
+    DevInfo storage info = devInfo[user];
+    require(info.weight > 0, 'Not dev address');
+    totalDevWeight -= info.weight;
+    info.pendingRewards += (totalRewardDebt - info.rewardDebt) * info.weight;
+    info.rewardDebt = totalRewardDebt;
+    info.weight = 0;
     emit RemoveDev(user);
   }
 
   function claim() external whenNotPaused nonReentrant {
     DevInfo storage info = devInfo[msg.sender];
 
-    uint256 pending = info.pendingRewards + (rewardPerDev - info.rewardDebt);
+    uint256 pending = info.pendingRewards +
+      (totalRewardDebt - info.rewardDebt) *
+      info.weight;
 
     if (pending > 0) {
       uint256 claimedAmount = safeRewardTransfer(msg.sender, pending);
@@ -50,12 +60,13 @@ contract DevFund is IDevFund, Ownable, ReentrancyGuard, Pausable {
       emit Claim(msg.sender, claimedAmount);
     }
 
-    info.rewardDebt = rewardPerDev;
+    info.rewardDebt = totalRewardDebt;
   }
 
   function pendingRewards(address user) external view returns (uint256) {
+    DevInfo storage info = devInfo[user];
     return
-      devInfo[user].pendingRewards + (rewardPerDev - devInfo[user].rewardDebt);
+      info.pendingRewards + (totalDevWeight - info.rewardDebt) * info.weight;
   }
 
   function safeRewardTransfer(
