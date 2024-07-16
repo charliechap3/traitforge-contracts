@@ -40,7 +40,8 @@ describe('EntityTrading', function () {
   it('should list an NFT for sale', async function () {
     await entityTrading.listNFTForSale(TOKEN_ID, LISTING_PRICE);
 
-    const listing = await entityTrading.listings(TOKEN_ID);
+    const listingId = await entityTrading.listedTokenIds(TOKEN_ID);
+    const listing = await entityTrading.listings(listingId);
 
     expect(listing.seller).to.equal(owner.address);
     expect(listing.price).to.equal(LISTING_PRICE);
@@ -50,7 +51,8 @@ describe('EntityTrading', function () {
   it('should allow the seller to cancel the listing', async function () {
     await entityTrading.cancelListing(TOKEN_ID);
 
-    const listing = await entityTrading.listings(TOKEN_ID);
+    const listingId = await entityTrading.listedTokenIds(TOKEN_ID);
+    const listing = await entityTrading.listings(listingId);
     expect(listing.isActive).to.be.false;
 
     // Check if the NFT is transferred back to the owner
@@ -62,7 +64,8 @@ describe('EntityTrading', function () {
     await nft.approve(await entityTrading.getAddress(), TOKEN_ID);
     await entityTrading.listNFTForSale(TOKEN_ID, LISTING_PRICE);
 
-    const listing = await entityTrading.listings(TOKEN_ID);
+    const listingId = await entityTrading.listedTokenIds(TOKEN_ID);
+    const listing = await entityTrading.listings(listingId);
 
     expect(listing.seller).to.equal(owner.address);
     expect(listing.price).to.equal(LISTING_PRICE);
@@ -84,7 +87,8 @@ describe('EntityTrading', function () {
         LISTING_PRICE / 10n
       );
 
-    const listing = await entityTrading.listings(TOKEN_ID);
+    const listingId = await entityTrading.listedTokenIds(TOKEN_ID);
+    const listing = await entityTrading.listings(listingId);
     expect(listing.isActive).to.be.false;
 
     // Check the balances after the purchase

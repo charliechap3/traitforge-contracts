@@ -124,7 +124,7 @@ describe('NukeFund', function () {
   });
 
   it('should calculate the age of a token', async function () {
-    const tokenId = 0;
+    const tokenId = 1;
 
     const age = await nukeFund.calculateAge(tokenId);
     expect(age).to.be.eq(0);

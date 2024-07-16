@@ -105,7 +105,7 @@ describe('EntityForging', () => {
 
   describe('listForForging', () => {
     it('should not allow non-owners to list a token for forging', async () => {
-      const tokenId = 0;
+      const tokenId = 1;
       const fee = FORGING_FEE;
 
       await expect(
@@ -114,7 +114,7 @@ describe('EntityForging', () => {
     });
 
     it('should allow the owner to list a token for forging', async () => {
-      const tokenId = 0;
+      const tokenId = 1;
       const fee = FORGING_FEE;
 
       await entityForging.connect(owner).listForForging(tokenId, fee);
@@ -143,8 +143,8 @@ describe('EntityForging', () => {
     });
 
     it('should allow forging with a listed token', async () => {
-      const forgerTokenId = 0;
-      const mergerTokenId = 1;
+      const forgerTokenId = 1;
+      const mergerTokenId = 2;
 
       const initialBalance = await ethers.provider.getBalance(owner.address);
 
@@ -159,7 +159,7 @@ describe('EntityForging', () => {
       )
         .to.emit(entityForging, 'EntityForged')
         .withArgs(
-          3,
+          4,
           forgerTokenId,
           mergerTokenId,
           (forgerEntropy + mergerEntrypy) / 2n,
@@ -168,7 +168,7 @@ describe('EntityForging', () => {
         .to.emit(nft, 'NewEntityMinted')
         .withArgs(
           await user1.getAddress(),
-          3,
+          4,
           2,
           (forgerEntropy + mergerEntrypy) / 2n
         );
@@ -186,7 +186,7 @@ describe('EntityForging', () => {
 
   describe('Auto cancel listing after list for sale in EntityTrading', () => {
     it('Shoudl cancel list for forging after list for sale in Entity Trading', async () => {
-      const tokenId = 0;
+      const tokenId = 1;
       const fee = FORGING_FEE;
       const LISTING_PRICE = ethers.parseEther('1.0');
 
@@ -196,7 +196,7 @@ describe('EntityForging', () => {
         .connect(owner)
         .approve(await entityTrading.getAddress(), tokenId);
 
-      await entityTrading.connect(owner).listNFTForSale(0, LISTING_PRICE);
+      await entityTrading.connect(owner).listNFTForSale(tokenId, LISTING_PRICE);
 
       // Check the token is unlisted in entity forging
       const listedTokenId = await entityForging.listedTokenIds(tokenId);
