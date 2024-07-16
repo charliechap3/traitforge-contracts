@@ -7,10 +7,11 @@ describe('DevFund', function () {
   let owner: HardhatEthersSigner;
   let user1: HardhatEthersSigner;
   let user2: HardhatEthersSigner;
+  let user3: HardhatEthersSigner;
   let devFund: DevFund;
 
   before(async () => {
-    [owner, user1, user2] = await ethers.getSigners();
+    [owner, user1, user2, user3] = await ethers.getSigners();
 
     devFund = await ethers.deployContract('DevFund');
   });
@@ -26,23 +27,23 @@ describe('DevFund', function () {
   });
 
   it('should not add a dev from non-owner', async () => {
-    await expect(devFund.connect(user2).addDev(user1.address)).to.revertedWith(
-      'Ownable: caller is not the owner'
-    );
+    await expect(
+      devFund.connect(user2).addDev(user1.address, 5)
+    ).to.revertedWith('Ownable: caller is not the owner');
   });
 
   it('should add a dev successfully', async () => {
-    await expect(devFund.addDev(user1.address))
+    await expect(devFund.addDev(user1.address, 5))
       .to.emit(devFund, 'AddDev')
-      .withArgs(user1.address);
+      .withArgs(user1.address, 5);
 
-    await expect(devFund.addDev(user2.address))
+    await expect(devFund.addDev(user2.address, 5))
       .to.emit(devFund, 'AddDev')
-      .withArgs(user2.address);
+      .withArgs(user2.address, 5);
   });
 
   it('should revert when the dev is already registered', async () => {
-    await expect(devFund.addDev(user1.address)).to.revertedWith(
+    await expect(devFund.addDev(user1.address, 5)).to.revertedWith(
       'Already registered'
     );
   });
@@ -78,6 +79,22 @@ describe('DevFund', function () {
     await expect(devFund.removeDev(user1.address))
       .to.emit(devFund, 'RemoveDev')
       .withArgs(user1.address);
-    expect(await devFund.isDev(user1.address)).to.eq(false);
+    const devInfo = await devFund.devInfo(user1.address);
+    expect(devInfo.weight).to.be.eq(0);
+  });
+
+  it('add another dev with different weight', async () => {
+    await devFund.addDev(user3.address, 1);
+
+    const prevBalance = await ethers.provider.getBalance(owner.address);
+    await user1.sendTransaction({
+      to: await devFund.getAddress(),
+      value: '100',
+    });
+
+    const curBalance = await ethers.provider.getBalance(owner.address);
+    expect(await devFund.pendingRewards(user3.address)).to.eq('16');
+
+    expect(curBalance - prevBalance).to.be.eq('4');
   });
 });
