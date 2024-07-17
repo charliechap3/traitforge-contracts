@@ -60,6 +60,12 @@ task('deploy-all', 'Deploy all the contracts').setAction(async (_, hre) => {
   await entropyGenerator.writeEntropyBatch2();
   await entropyGenerator.writeEntropyBatch3();
   console.log('Writing EntropyBatch done.');
+
+  console.log('Setting DevFund users...');
+  await devFund.addDev(WHITELIST[0], 100);
+  await devFund.addDev(WHITELIST[1], 100);
+  await devFund.addDev(WHITELIST[2], 100);
+  console.log('Setting DevFund users done.');
 });
 
 task('deploy-token', 'Deploy Trait Token').setAction(async (_, hre) => {
