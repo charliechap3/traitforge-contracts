@@ -55,17 +55,20 @@ task('deploy-all', 'Deploy all the contracts').setAction(async (_, hre) => {
   await nft.setRootHash(rootHash);
   console.log('Generated & Set the root hash successfully.');
 
-  console.log('Writing EntropyBatch...');
-  await entropyGenerator.writeEntropyBatch1();
-  await entropyGenerator.writeEntropyBatch2();
-  await entropyGenerator.writeEntropyBatch3();
-  console.log('Writing EntropyBatch done.');
-
   console.log('Setting DevFund users...');
   await devFund.addDev(WHITELIST[0], 100);
   await devFund.addDev(WHITELIST[1], 100);
   await devFund.addDev(WHITELIST[2], 100);
   console.log('Setting DevFund users done.');
+
+  console.log('Writing EntropyBatch...');
+  const tx1 = await entropyGenerator.writeEntropyBatch1();
+  tx1.wait();
+  const tx2 = await entropyGenerator.writeEntropyBatch2();
+  tx2.wait();
+  const tx3 = await entropyGenerator.writeEntropyBatch3();
+  tx3.wait();
+  console.log('Writing EntropyBatch done.');
 });
 
 task('deploy-token', 'Deploy Trait Token').setAction(async (_, hre) => {
