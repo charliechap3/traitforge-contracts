@@ -22,6 +22,7 @@ contract TraitForgeNft is
   uint256 public maxTokensPerGen = 10000;
   uint256 public startPrice = 0.005 ether;
   uint256 public priceIncrement = 0.0000245 ether;
+  uint256 public priceIncrementByGen = 0.000005 ether;
 
   IEntityForging public entityForgingContract;
   IEntropyGenerator public entropyGenerator;
@@ -102,6 +103,12 @@ contract TraitForgeNft is
 
   function setPriceIncrement(uint256 _priceIncrement) external onlyOwner {
     priceIncrement = _priceIncrement;
+  }
+
+  function setPriceIncrementByGen(
+    uint256 _priceIncrementByGen
+  ) external onlyOwner {
+    priceIncrementByGen = _priceIncrementByGen;
   }
 
   function setMaxGeneration(uint maxGeneration_) external onlyOwner {
@@ -342,7 +349,7 @@ contract TraitForgeNft is
     );
     currentGeneration++;
     generationMintCounts[currentGeneration] = 0;
-    priceIncrement = priceIncrement + 0.000005 ether;
+    priceIncrement = priceIncrement + priceIncrementByGen;
     entropyGenerator.initializeAlphaIndices();
     emit GenerationIncremented(currentGeneration);
   }
