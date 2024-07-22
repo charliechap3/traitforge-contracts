@@ -34,6 +34,8 @@ interface ITraitForgeNft is IERC721Enumerable {
 
   function setPriceIncrement(uint256 _priceIncrement) external;
 
+  function setPriceIncrementByGen(uint256 _priceIncrementByGen) external;
+
   function startAirdrop(uint256 amount) external;
 
   function isApprovedOrOwner(
